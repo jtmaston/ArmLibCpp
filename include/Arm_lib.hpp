@@ -46,8 +46,8 @@ class ArmDevice
 
         void servo_write_any(uint8_t id, uint16_t angle, uint16_t time);                // write value to any servo ( id 0 to 255 )
         void servo_write(uint8_t id, uint16_t angle, uint16_t time);                    // write to single servo ( id 1 to 6)
-        void servo_write6(uint16_t angles[5], uint16_t time, bool floating = false);    // write to 6 servos
-        void servo_write6(float32_t angles[5], uint16_t time);                          // write to 6 servos , with downcast from float
+        void servo_write6(uint16_t angles[6], uint16_t time, bool floating = false);    // write to 6 servos
+        void servo_write6(float32_t angles[6], uint16_t time);                          // write to 6 servos , with downcast from float
         void toggleTorque( bool torque );                                               // turn torque on engines on and off
         void home_position();                                                           // move to the home position
 
