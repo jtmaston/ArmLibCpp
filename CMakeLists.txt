@@ -19,18 +19,3 @@ target_compile_features(5DOF
     cxx_deleted_functions
     cxx_final
 )
-
-add_library(joystick STATIC
-    lib/libjoystick/joystick.cc
-)
-set_target_properties(joystick PROPERTIES
-    PUBLIC_HEADER "lib/libjoystick/joystick.hh"
-)
-target_include_directories(joystick PRIVATE /include)
-target_compile_features(5DOF
-    PUBLIC
-    cxx_attributes
-    cxx_defaulted_functions
-    cxx_deleted_functions
-    cxx_final
-)
