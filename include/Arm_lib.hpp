@@ -12,10 +12,8 @@
 #include <thread>
 
 #include <cmath>
-#include <arm_neon.h>
 #include <array>
 #include <vector>
-#include <linux/joystick.h>
 
 extern "C"
 {
@@ -31,7 +29,7 @@ class ArmDevice
 {
     public:
         float angles[7] = {0, 0, 0, 0, 0, 0, 0};
-        std::vector<std::vector<float32_t>> learned_angles;
+        std::vector<std::vector<float>> learned_angles;
 
         ArmDevice();
 
@@ -47,17 +45,15 @@ class ArmDevice
         void servo_write_any(uint8_t id, uint16_t angle, uint16_t time);                // write value to any servo ( id 0 to 255 )
         void servo_write(uint8_t id, uint16_t angle, uint16_t time);                    // write to single servo ( id 1 to 6)
         void servo_write6(uint16_t angles[5], uint16_t time, bool floating = false);    // write to 6 servos
-        void servo_write6(float32_t angles[5], uint16_t time);                          // write to 6 servos , with downcast from float
+        void servo_write6(float angles[5], uint16_t time);                          // write to 6 servos , with downcast from float
         void toggleTorque( bool torque );                                               // turn torque on engines on and off
         void home_position();                                                           // move to the home position
 
-        float32_t servo_read_any(uint8_t id);                                           // read any id from 1 to 6
-        float32_t servo_read(uint8_t id);                                               // read any id from 0 to 255
-        float32_t* servo_readall();                                                     // read all 6 servos at once
+        float servo_read_any(uint8_t id);                                           // read any id from 1 to 6
+        float servo_read(uint8_t id);                                               // read any id from 0 to 255
+        float* servo_readall();                                                     // read all 6 servos at once
 
         void servo_set_id(uint8_t id);                                                  // program the servo for id                                                            
-            
-    private:
         std::array<uint8_t, 13> target;                         // used in cleaning the bus, a buffer of the old destination command
         void bus_cleaner(uint8_t* dest, uint16_t time);         // write onto the bus, only if the coordinates haven't already been sent
 
@@ -71,8 +67,5 @@ class ArmDevice
         void setRGBEffect(uint8_t effect);
         void closeRGB();
         void setRGB(uint led, uint8_t r, uint8_t g, uint8_t b);
-
-        
-
 };
 
