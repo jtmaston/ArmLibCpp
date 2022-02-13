@@ -98,7 +98,7 @@ void ArmDevice::servo_write(uint8_t id, uint16_t angle, uint16_t time)
     }
 }
 
-void ArmDevice::servo_write6(float32_t angles[6], uint16_t time)
+void ArmDevice::servo_write6(float angles[6], uint16_t time)
 {
     uint16_t* angle_t = new uint16_t[6];
 
@@ -184,7 +184,7 @@ void ArmDevice::button_mode(bool mode)                              // undocumen
     // TODO: me
 }
 
-float32_t ArmDevice::servo_read(uint8_t id)
+float ArmDevice::servo_read(uint8_t id)
 {
     if (((id > 6) || (id < 1)) == 1)
     {
@@ -196,7 +196,7 @@ float32_t ArmDevice::servo_read(uint8_t id)
     uint8_t buf[3] = {id, 0};
     uint16_t pos = write(this->bus, buf, 2);
 
-    float32_t val;
+    float val;
 
     usleep(3000);
 
@@ -232,9 +232,9 @@ float32_t ArmDevice::servo_read(uint8_t id)
     return val;
 }
 
-float32_t *ArmDevice::servo_readall()
+float *ArmDevice::servo_readall()
 {
-    float32_t* values = new float32_t[6];
+    float* values = new float[6];
     for (uint8_t i = 1; i <= 6; i++){
 
         values[i - 1] = this->servo_read(i);
@@ -246,7 +246,7 @@ float32_t *ArmDevice::servo_readall()
     return values;
 }
 
-float32_t ArmDevice::servo_read_any(uint8_t id)
+float ArmDevice::servo_read_any(uint8_t id)
 {
     if (id < 1 or id > 250)
     {
