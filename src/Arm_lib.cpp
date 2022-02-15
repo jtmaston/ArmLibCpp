@@ -263,15 +263,6 @@ float ArmDevice::servo_read_any(uint8_t id)
     return 180.0 * (pos - 900.0) / (3100.0 - 900.0);
 }
 
-void ArmDevice::home_position()
-{
-    this -> toggleTorque(true);
-    uint16_t angles[] = {90, 135, 45, 0, 90, 90};
-    this -> servo_write6(angles, 1000);
-    usleep(1000000);
-    //toggleTorque(0);
-}
-
 void ArmDevice::servo_write_any(uint8_t id, uint16_t angle, uint16_t time)
 {
     if ( id == 0 )
