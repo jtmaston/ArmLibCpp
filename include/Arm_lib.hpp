@@ -28,7 +28,6 @@ extern "C"
 class ArmDevice
 {
     public:
-        float angles[7] = {0, 0, 0, 0, 0, 0, 0};
         std::vector<std::vector<float>> learned_angles;
 
         ArmDevice();
