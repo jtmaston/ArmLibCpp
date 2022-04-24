@@ -43,7 +43,7 @@ void ArmDevice::noBuzz()
     write(bus, buf, 2);
 }
 
-void ArmDevice::servo_write(uint8_t id, uint16_t angle, uint16_t time)
+void ArmDevice::servo_write(uint8_t id, float angle, uint16_t time)
 {
     switch( id )
     {
@@ -58,8 +58,8 @@ void ArmDevice::servo_write(uint8_t id, uint16_t angle, uint16_t time)
         {
             uint8_t value_h, value_l, time_h, time_l;
             uint16_t pos;
-
-            //std::cout << pos;
+            uint16_t aux;
+            aux = angle;
 
             switch(id)
                 {
@@ -74,15 +74,18 @@ void ArmDevice::servo_write(uint8_t id, uint16_t angle, uint16_t time)
                     break;
                 default:
                     pos = int((3100 - 900) * (angle - 0) / (180 - 0) + 900);
+                    std::cout << pos << '\n';
                     break;
                 }
-
-
+            
             value_h = (pos >> 8) & 0xFF;
             value_l = pos & 0xFF;
 
             time_h = (time >> 8) & 0xFF;
             time_l = time & 0xFF;
+
+            //std::cout << (int)value_h << ' ';
+            //std::cout << (int)value_l << '\n';
             
             uint8_t buf[] = { 
                 static_cast<uint8_t>( (0x10 + id) ) ,
@@ -105,10 +108,10 @@ void ArmDevice::servo_write6(float angles[6], uint16_t time)
     for(int i = 0; i < 6; i++)
         angle_t[i] = angles[i];
 
-    servo_write6(angle_t, time, true);
+    servo_write6(angle_t, time);
 }
 
-void ArmDevice::servo_write6(uint16_t angles[6], uint16_t time, bool floating)
+void ArmDevice::servo_write6(uint16_t angles[6], uint16_t time)
 {
     uint8_t bytearr[14] = {0};
     bytearr[0] = 0x1D;
