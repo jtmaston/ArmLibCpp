@@ -49,7 +49,7 @@ void ArmDevice::servo_write(uint8_t id, float angle, uint16_t time)
     {
     case 0:
     {
-        uint16_t angles[] = { angle, angle, angle, angle, angle, angle };
+        float angles[] = {angle, angle, angle, angle, angle, angle};
         this -> servo_write6(angles, time);
         break;
     }
@@ -66,7 +66,7 @@ void ArmDevice::servo_write(uint8_t id, float angle, uint16_t time)
                 case 2:
                 case 3:
                 case 4:
-                    angle = 180 - angle;
+                    angle = angle;
                     pos = int((3100 - 900) * (angle - 0) / (180 - 0) + 900);
                     break;
                 case 5:
@@ -103,16 +103,6 @@ void ArmDevice::servo_write(uint8_t id, float angle, uint16_t time)
 
 void ArmDevice::servo_write6(float angles[6], uint16_t time)
 {
-    uint16_t* angle_t = new uint16_t[6];
-
-    for(int i = 0; i < 6; i++)
-        angle_t[i] = angles[i];
-
-    servo_write6(angle_t, time);
-}
-
-void ArmDevice::servo_write6(uint16_t angles[6], uint16_t time)
-{
     uint8_t bytearr[14] = {0};
     bytearr[0] = 0x1D;
     
@@ -138,18 +128,20 @@ void ArmDevice::servo_write6(uint16_t angles[6], uint16_t time)
         case 3:
         case 4:
         {
-            uint16_t angle = 180 - angles[i / 2 - 1];
+            
+            float angle = angles[i / 2 - 1];
             pos = ((3100.0f - 900.0f) * (float)angle / 180.0f + 900.0f);
             break;
         }
         case 5:
-            pos = (3700.0f - 380.0f) * (float)angles[i / 2 - 1] / 270.0f  + 380.0f;
+            pos = ((3700.0f - 380.0f) * (float)angles[i / 2 - 1] / 270.0f  + 380.0f);
             break;
         default:
-            pos = (3100.0f - 900.0f) * angles[i / 2 - 1]/ 180.0f + 900.0f;
+            pos = ((3100.0f - 900.0f) * angles[i / 2 - 1]/ 180.0f + 900.0f);
             break;
         }
-        uint16_t p_adj = trunc(pos);
+
+        uint16_t p_adj = static_cast<int>(pos);
         bytearr[i - 1] = (p_adj >> 8) & 0xFF;
         bytearr[i] = p_adj & 0xFF;
     }
