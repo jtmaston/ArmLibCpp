@@ -2,37 +2,37 @@
 #include <iostream>
 
 ArmDevice::ArmDevice() {
-    this->bus = open("/dev/i2c-1", O_RDWR);
-    this->addr = 0x15;
-    if (this->bus < 0) {
-        throw std::runtime_error("Bus error!");
+    this->bus_ = open("/dev/i2c-1", O_RDWR);
+    this->addr_ = 0x15;
+    if (this->bus_ < 0) {
+        // throw std::runtime_error("Bus error!");
     }
 
-    if (ioctl(this->bus, I2C_SLAVE, this->addr) < 0) {
-        throw std::runtime_error("Bus error!");
+    if (ioctl(this->bus_, I2C_SLAVE, this->addr_) < 0) {
+        // throw std::runtime_error("Bus error!");
     }
 
-    this->ledBus = open("/dev/i2c-1", O_RDWR);
-    this->ledAddr = 0x0d;
-    if (this->ledBus < 0) {
-        throw std::runtime_error("Bus error!");
+    this->ledBus_ = open("/dev/i2c-1", O_RDWR);
+    this->ledAddr_ = 0x0d;
+    if (this->ledBus_ < 0) {
+        // throw std::runtime_error("Bus error!");
     }
 
-    if (ioctl(this->ledBus, I2C_SLAVE, this->ledAddr) < 0) {
-        throw std::runtime_error("Bus error!");
+    if (ioctl(this->ledBus_, I2C_SLAVE, this->ledAddr_) < 0) {
+        // throw std::runtime_error("Bus error!");
     }
 
-    target.fill(0);
+    target_.fill(0);
 }
 
 [[maybe_unused]] void ArmDevice::buzz(uint8_t time) const {
     uint8_t buf[] = {0x06, time};
-    write(bus, buf, 2);
+    write(bus_, buf, 2);
 }
 
 [[maybe_unused]] void ArmDevice::noBuzz() const {
     uint8_t buf[] = {0x06, 0};
-    write(bus, buf, 2);
+    write(bus_, buf, 2);
 }
 
 [[maybe_unused]] void ArmDevice::servoWrite(uint8_t id, float angle, uint16_t time) {
@@ -40,7 +40,7 @@ ArmDevice::ArmDevice() {
         float angles[] = {angle, angle, angle, angle, angle, angle};
         this->servoWrite6(angles, time);
     } else {
-        uint8_t valueH, valueL, timeH, timeL;
+        uint8_t value_h, value_l, time_h, time_l;
         uint16_t pos;
 
         switch (id) {
@@ -55,25 +55,24 @@ ArmDevice::ArmDevice() {
                 break;
             default:
                 pos = int((3100 - 900) * (angle - 0) / (180 - 0) + 900);
-                std::cout << pos << '\n';
                 break;
         }
 
-        valueH = (pos >> 8) & 0xFF;
-        valueL = pos & 0xFF;
+        value_h = (pos >> 8) & 0xFF;
+        value_l = pos & 0xFF;
 
-        timeH = (time >> 8) & 0xFF;
-        timeL = time & 0xFF;
+        time_h = (time >> 8) & 0xFF;
+        time_l = time & 0xFF;
 
         uint8_t buf[] = {
                 static_cast<uint8_t>((0x10 + id)),
-                valueH,
-                valueL,
-                timeH,
-                timeL
+                value_h,
+                value_l,
+                time_h,
+                time_l
         };
 
-        write(this->bus, buf, 5);
+        write(this->bus_, buf, 5);
     }
 }
 
@@ -83,7 +82,7 @@ ArmDevice::ArmDevice() {
         float angles[] = {angle, angle, angle, angle, angle, angle};
         this->servoWrite6(angles, time);
     } else {
-        uint8_t valueH, valueL, timeH, timeL;
+        uint8_t value_h, value_l, time_h, time_l;
         uint16_t pos;
 
         switch (id) {
@@ -102,28 +101,28 @@ ArmDevice::ArmDevice() {
                 break;
         }
 
-        valueH = (pos >> 8) & 0xFF;
-        valueL = pos & 0xFF;
+        value_h = (pos >> 8) & 0xFF;
+        value_l = pos & 0xFF;
 
-        timeH = (time >> 8) & 0xFF;
-        timeL = time & 0xFF;
+        time_h = (time >> 8) & 0xFF;
+        time_l = time & 0xFF;
 
         uint8_t buf[] = {
                 static_cast<uint8_t>((0x10 + id)),
-                valueH,
-                valueL,
-                timeH,
-                timeL
+                value_h,
+                value_l,
+                time_h,
+                time_l
         };
 
-        write(this->bus, buf, 5);
+        write(this->bus_, buf, 5);
     }
 }
 
 
 void ArmDevice::servoWrite6(const float angles[6], uint16_t time) {
-    uint8_t byteArray[14] = {0};
-    byteArray[0] = 0x1D;
+    uint8_t byte_array[14] = {0};
+    byte_array[0] = 0x1D;
 
 
     bool flag = false;
@@ -156,33 +155,33 @@ void ArmDevice::servoWrite6(const float angles[6], uint16_t time) {
                 break;
         }
 
-        uint16_t pAdj = static_cast<int>(pos);
-        byteArray[i - 1] = (pAdj >> 8) & 0xFF;
-        byteArray[i] = pAdj & 0xFF;
+        uint16_t p_adj = static_cast<int>(pos);
+        byte_array[i - 1] = (p_adj >> 8) & 0xFF;
+        byte_array[i] = p_adj & 0xFF;
     }
 
-    busCleaner(byteArray, time);
+    busCleaner(byte_array, time);
 }
 
 void ArmDevice::toggleTorque(bool torque) const {
     uint8_t buf[2] = {0x1A, uint8_t(torque)};
-    write(this->bus, buf, 2);
+    write(this->bus_, buf, 2);
 }
 
 [[maybe_unused]] void ArmDevice::rgb(uint8_t r, uint8_t g, uint8_t b) const {
     uint8_t buf[4] = {0x02, r, g, b};
-    write(this->bus, buf, 4);
+    write(this->bus_, buf, 4);
 }
 
 [[maybe_unused]] void ArmDevice::resetMcu() const {
     uint8_t buf[2] = {0x05, 0x01};
-    write(this->bus, buf, 2);
+    write(this->bus_, buf, 2);
 }
 
 [[maybe_unused]] bool ArmDevice::pingServo(int8_t id) const {
     uint8_t buf[4] = {0x38, id};
-    write(this->bus, buf, 2);
-    uint8_t value = i2c_smbus_read_byte_data(this->bus, 0x38);
+    write(this->bus_, buf, 2);
+    uint8_t value = i2c_smbus_read_byte_data(this->bus_, 0x38);
     return bool(value);
 }
 
@@ -199,14 +198,14 @@ float ArmDevice::servoRead(uint8_t id) const {
 
     id += 0x30;
     uint8_t buf[3] = {id, 0};
-    write(this->bus, buf, 2);
+    write(this->bus_, buf, 2);
 
     float val;
 
     usleep(3000);
 
-    uint32_t readFromBus = i2c_smbus_read_word_data(this->bus, id);
-    auto pos = (float) ((readFromBus >> 8 & 0xff) | (readFromBus << 8 & 0xff00));
+    uint32_t read_from_bus = i2c_smbus_read_word_data(this->bus_, id);
+    auto pos = (float) ((read_from_bus >> 8 & 0xff) | (read_from_bus << 8 & 0xff00));
 
     id -= 0x30;
 
@@ -252,10 +251,10 @@ float *ArmDevice::servoReadall() const {
     }
 
     uint8_t buf[3] = {0x37, id};
-    write(this->bus, buf, 2);
+    write(this->bus_, buf, 2);
     usleep(3000);
-    uint32_t readFromBus = i2c_smbus_read_word_data(this->bus, id);
-    auto pos = float((readFromBus >> 8 & 0xff) | (readFromBus << 8 & 0xff00));
+    uint32_t read_from_bus = i2c_smbus_read_word_data(this->bus_, id);
+    auto pos = float((read_from_bus >> 8 & 0xff) | (read_from_bus << 8 & 0xff00));
 
     return (float) (180.0 * (pos - 900.0) / (3100.0 - 900.0));
 }
@@ -274,38 +273,38 @@ float *ArmDevice::servoReadall() const {
                     static_cast<uint8_t> ((time >> 8)),
                     static_cast<uint8_t> (time)
             };
-    write(this->bus, buf, 6);
+    write(this->bus_, buf, 6);
 }
 
 [[maybe_unused]] void ArmDevice::servoSetId(uint8_t id) const {
     uint8_t buf[2] = {0x18, id};
-    write(this->bus, buf, 2);
+    write(this->bus_, buf, 2);
 }
 
 void
-ArmDevice::busCleaner(uint8_t *dest, uint16_t time)           // function introduced by me to prevent spamming the bus
+ArmDevice::busCleaner(uint8_t *dest, uint16_t time)           // function introduced by me to prevent spamming the bus_
 {
     std::array<uint8_t, 13> t = {0};
     std::copy(dest, dest + 13, t.begin());
 
 
-    if (t != target) {
-        uint8_t timeArray[3] =
+    if (t != target_) {
+        uint8_t time_array[3] =
                 {
                         0x1E,
                         static_cast<uint8_t>((time >> 8)),
                         static_cast<uint8_t>(time)
                 };
 
-        write(this->bus, timeArray, 3);
-        write(this->bus, dest, 13);
-        target = t;
+        write(this->bus_, time_array, 3);
+        write(this->bus_, dest, 13);
+        target_ = t;
     }
 }
 
 [[maybe_unused]] [[maybe_unused]] void ArmDevice::servoWrite6(const uint16_t *angles, uint16_t time) {
-    uint8_t byteArray[14] = {0};
-    byteArray[0] = 0x1D;
+    uint8_t byte_array[14] = {0};
+    byte_array[0] = 0x1D;
 
 
     bool flag = false;
@@ -338,12 +337,12 @@ ArmDevice::busCleaner(uint8_t *dest, uint16_t time)           // function introd
                 break;
         }
 
-        uint16_t pAdj = static_cast<int>(pos);
-        byteArray[i - 1] = (pAdj >> 8) & 0xFF;
-        byteArray[i] = pAdj & 0xFF;
+        uint16_t p_adj = static_cast<int>(pos);
+        byte_array[i - 1] = (p_adj >> 8) & 0xFF;
+        byte_array[i] = p_adj & 0xFF;
     }
 
-    busCleaner(byteArray, time);
+    busCleaner(byte_array, time);
 }
 
 

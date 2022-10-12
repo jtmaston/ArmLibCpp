@@ -1,5 +1,5 @@
-#ifndef ARMLIB_H
-#define ARMLIB_H
+#ifndef ROBOTDASHBOARD_ARM_LIB_HPP
+#define ROBOTDASHBOARD_ARM_LIB_HPP
 
 #include <cstdlib>
 #include <cstdio>
@@ -24,7 +24,7 @@ extern "C"
 
 class ArmDevice {
 public:
-    std::vector<std::vector<float>> learnedAngles;
+    std::vector<std::vector<float>> learnedAngles_;
 
     ArmDevice();
 
@@ -51,14 +51,14 @@ public:
     [[nodiscard]] float* servoReadall() const;                             // read all 6 servos at once
 
     [[maybe_unused]] void servoSetId(uint8_t id) const;                                     // program the servo for id
-    std::array<uint8_t, 13> target{};
+    std::array<uint8_t, 13> target_{};
 
     void busCleaner(uint8_t *dest, uint16_t time);
 
-    int addr = 0x15;                                                       // address of the microcontroller
-    int bus = -1;                                                          // I2C bus
-    int ledBus = -1;
-    int ledAddr = 0x0d;
+    int addr_ = 0x15;                                                       // address of the microcontroller
+    int bus_ = -1;                                                          // I2C bus_
+    int ledBus_ = -1;
+    int ledAddr_ = 0x0d;
 
     // void setRGBColor(uint8_t color);                     TODO: implement these
     // void setRGBSpeed(uint8_t speed);
