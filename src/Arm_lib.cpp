@@ -173,9 +173,12 @@ bool ArmDevice::ping_servo(uint8_t id)
     uint8_t value = i2c_smbus_read_byte_data(this -> bus, 0x38);
     return bool ( value );
 }
-void ArmDevice::button_mode(bool mode)                              // undocumented function
+void ArmDevice::button_mode(int mode)                              // undocumented function
 {
-    //uint8_t buf[4] { 0x03, static_cast<uint8_t> ( mode ) };
+    uint8_t buf[4] { 0x03, static_cast<uint8_t> ( mode ) };
+    write( this -> bus, buf, 2);
+    write( this -> bus, buf, 2);
+    write( this -> bus, buf, 2);
     // TODO: me
 }
 

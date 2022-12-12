@@ -39,12 +39,12 @@ class ArmDevice
         void rgb(uint8_t r, uint8_t g, uint8_t b);                                      // set the RGB led value
         void reset_mcu();                                                               // reset microcontroller
         bool ping_servo(uint8_t id);                                                    // ping to test if servo is available
-        void button_mode(bool mode);                                                    // undocumented function
+        void button_mode(int mode);                                                    // undocumented function
 
         void servo_write_any(uint8_t id, uint16_t angle, uint16_t time);                // write value to any servo ( id 0 to 255 )
         void servo_write(uint8_t id, uint16_t angle, uint16_t time);                    // write to single servo ( id 1 to 6)
         void servo_write(uint8_t id, float angle, uint16_t time);                    // write to single servo ( id 1 to 6)
-        //void servo_write6(uint16_t angles[6], uint16_t time);                           // write to 6 servos
+        //void servo_write6(uint16_t angles_[6], uint16_t time);                           // write to 6 servos
         void servo_write6(float angles[6], uint16_t time);                          // write to 6 servos , with downcast from float
         void toggleTorque( bool torque );                                               // turn torque on engines on and off
 
