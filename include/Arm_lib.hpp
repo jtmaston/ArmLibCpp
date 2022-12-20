@@ -53,7 +53,7 @@ class ArmDevice
         float servo_read(uint8_t id);                                               // read any id from 0 to 255
         float* servo_readall();                                                     // read all 6 servos at once
 
-        void servo_set_id(uint8_t id);                                                  // program the servo for id                                                            
+        void servo_set_id(uint8_t id);                                                  // initializeInterpreterThread the servo for id
         std::array<uint8_t, 13> target;                         // used in cleaning the bus, a buffer of the old destination command
         void bus_cleaner(uint8_t* dest, uint16_t time);         // write onto the bus, only if the coordinates haven't already been sent
 
