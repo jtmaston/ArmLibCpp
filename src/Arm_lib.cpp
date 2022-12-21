@@ -101,17 +101,21 @@ void ArmDevice::servoWrite6(const float *angles, const uint16_t time) {
         float pos = 0;
         switch (i / 2) {
             case 2:
-            case 3:
-            case 4: {
-                float angle = angles[i / 2 - 1];
+            case 3:{
+                float angle = angles[i / 2 - 1] + 90;
+                pos = ((3100.0f - 900.0f) * (float) angle / 180.0f + 900.0f);
+                break;
+            }
+            case 4:{
+                float angle = angles[i / 2 - 1] + 180 - 5;
                 pos = ((3100.0f - 900.0f) * (float) angle / 180.0f + 900.0f);
                 break;
             }
             case 5:
-                pos = ((3700.0f - 380.0f) * (float) angles[i / 2 - 1] / 270.0f + 380.0f);
+                pos = ((3700.0f - 380.0f) * (float) (angles[i / 2 - 1] + 90 ) / 270.0f + 380.0f);
                 break;
             default:
-                pos = ((3100.0f - 900.0f) * angles[i / 2 - 1] / 180.0f + 900.0f);
+                pos = ((3100.0f - 900.0f) * (angles[i / 2 - 1] + 90 ) / 180.0f + 900.0f);
                 break;
         }
 
@@ -172,18 +176,20 @@ float ArmDevice::servoRead(uint8_t id) const {
     float val = NAN;
     switch ((int) id) {
         case 5: {
-            val = 270 * (pos - 380) / (3700 - 380);
+            val = 270 * (pos - 380) / (3700 - 380) - 90;
             break;
         }
         case 2:
-        case 3:
-        case 4: {
-            val = 180 * (pos - 900) / (3100 - 900);
-            val = 180 - val;
+        case 3:{
+            val = floor( 180.0f * (pos - 900.0f) / (3100.0f - 900.0f) ) - 90;
+            break;
+        }
+        case 4:{
+            val = floor( 180.0f * (pos - 900.0f) / (3100.0f - 900.0f) ) - 180 + 4;
             break;
         }
         default: {
-            val = 180 * (pos - 900) / (3100 - 900);
+            val = 180 * (pos - 900) / (3100 - 900) - 90;
             break;
         }
 
