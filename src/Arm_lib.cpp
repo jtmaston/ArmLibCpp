@@ -152,7 +152,10 @@ void ArmDevice::servo_write6(float angles[6], uint16_t time)
 void ArmDevice::toggleTorque(bool torque)
 {
     uint8_t buf[2] = { 0x1A, uint8_t(torque) };
+
     write( this -> bus, buf, 2);
+    write( this -> bus, buf, 2);
+
 }
 void ArmDevice::rgb(uint8_t r, uint8_t g, uint8_t b)
 {   
