@@ -27,7 +27,7 @@ class ArmDevice
     ArmDevice();
 
 
-    void buzz(uint8_t time = 10) const;                                                   // start the buzzer
+    void buzz(uint8_t time = 10) const ;                                                   // start the buzzer
     void noBuzz() const;                                                                  // stop the buzzer
 
     void RGB(uint8_t r, uint8_t g, uint8_t b) const;                                      // set the RGB led value
@@ -38,7 +38,7 @@ class ArmDevice
 
     void servoWriteAny(uint8_t id, uint16_t angle,
                        uint16_t time) const;                // write value to any servo ( id 0 to 255 )         // write to single servo ( id 1 to 6)
-    void servoWrite(uint8_t id, float angle,
+     void servoWrite(uint8_t id, float angle,
                     uint16_t time);                    // write to single servo ( id 1 to 6)         // write to 6 servos
     void servoWrite6(const float *angles,
                      uint16_t time);                          // write to 6 servos , with downcast from float
@@ -46,15 +46,14 @@ class ArmDevice
     toggleTorque(bool torque) const;                                               // turn torque on engines on and off
 
 
-    [[nodiscard]] float
-    servoReadAny(uint8_t id) const;                                           // read any id from 1 to 6
+    //[[nodiscard]] float
+    //servoReadAny(uint8_t id) const;                                           // read any id from 1 to 6
     [[nodiscard]] float
     servoRead(uint8_t id) const;                                               // read any id from 0 to 255
     [[nodiscard]] std::array<float, 6>
     servoReadall() const;                                                     // read all 6 servos at once
 
-    void servoSetId(
-            uint8_t id) const;                                                  // initializeInterpreterThread the servo for id
+    void servoSetId (uint8_t id) const;                                                  // initializeInterpreterThread the servo for id
     std::array<uint8_t, 13> target_{};                         // used in cleaning the motorBus, a buffer of the old destination command
     void busCleaner(uint8_t *dest,
                     uint16_t time);         // write onto the motorBus, only if the coordinates haven't already been sent
