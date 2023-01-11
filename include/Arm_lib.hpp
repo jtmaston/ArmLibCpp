@@ -27,47 +27,48 @@ class ArmDevice
     ArmDevice();
 
 
-    void buzz(uint8_t time = 10) const ;                                                   // start the buzzer
+    void buzz(int8_t time = 10) const ;                                                   // start the buzzer
     void noBuzz() const;                                                                  // stop the buzzer
 
-    void RGB(uint8_t r, uint8_t g, uint8_t b) const;                                      // set the RGB led value
+    [[maybe_unused]] void rgb(int8_t r, int8_t g, int8_t b) const;                                      // set the rgb led value
     void resetMcu() const;                                                               // reset microcontroller
     [[nodiscard]] bool pingServo(
-            uint8_t id) const;                                                    // ping to test if servo is available
+            int8_t id) const;                                                    // ping to test if servo is available
     void buttonMode(int mode) const;                                                    // undocumented function
 
-    void servoWriteAny(uint8_t id, uint16_t angle,
-                       uint16_t time) const;                // write value to any servo ( id 0 to 255 )         // write to single servo ( id 1 to 6)
-     void servoWrite(uint8_t id, float angle,
-                    uint16_t time);                    // write to single servo ( id 1 to 6)         // write to 6 servos
+    void servoWriteAny(int8_t id, int16_t angle,
+                       int16_t time) const;                // write value to any servo ( id 0 to 255 )         // write to single servo ( id 1 to 6)
+     void servoWrite(int8_t id, float angle,
+                    int16_t time);                    // write to single servo ( id 1 to 6)         // write to 6 servos
     void servoWrite6(const float *angles,
-                     uint16_t time);                          // write to 6 servos , with downcast from float
+                     int16_t time);                          // write to 6 servos , with downcast from float
     void
     toggleTorque(bool torque) const;                                               // turn torque on engines on and off
 
 
     //[[nodiscard]] float
-    //servoReadAny(uint8_t id) const;                                           // read any id from 1 to 6
+    //servoReadAny(int8_t id) const;                                           // read any id from 1 to 6
     [[nodiscard]] float
-    servoRead(uint8_t id) const;                                               // read any id from 0 to 255
-    [[nodiscard]] std::array<float, 6>
+    servoRead(int8_t id) const;                                               // read any id from 0 to 255
+    [[nodiscard]] std::array<float, 6U>
     servoReadall() const;                                                     // read all 6 servos at once
 
-    void servoSetId (uint8_t id) const;                                                  // initializeInterpreterThread the servo for id
-    std::array<uint8_t, 13> target_{};                         // used in cleaning the motorBus, a buffer of the old destination command
-    void busCleaner(uint8_t *dest,
-                    uint16_t time);         // write onto the motorBus, only if the coordinates haven't already been sent
-
+    void servoSetId (int8_t id) const;                                                  // initializeInterpreterThread the servo for id
+                            // used in cleaning the motorBus, a buffer of the old destination command
+    void busCleaner(std::array<int8_t, 14U> dest,
+                    int16_t time);         // write onto the motorBus, only if the coordinates haven't already been sent
+private:
+    std::array<int8_t, 14U> target_{};
     const int coprocessorAddress_ = 0x15;
     const int hatAddress_ = 0x0d;
     int motorBus_ = -1;                                             // I2C motorBus
     int ledBus_ = -1;
 
 
-    /*void setRGBColor(uint8_t color);
-    void setRGBSpeed(uint8_t speed);
-    void setRGBEffect(uint8_t effect);
+    /*void setRGBColor(int8_t color);
+    void setRGBSpeed(int8_t speed);
+    void setRGBEffect(int8_t effect);
     void closeRGB();
-    void setRGB(uint led, uint8_t r, uint8_t g, uint8_t b);*/
+    void setRGB(int led, int8_t r, int8_t g, int8_t b);*/
 };
 

@@ -3,6 +3,13 @@
 #include <cmath>
 #include <iostream>
 
+#define FLOOR_16( x ) ( static_cast<int16_t>(std::floor(x) ))
+#define TRUNC_8( x ) (static_cast<int8_t>(x))
+#define UNSIGN_8( x ) (static_cast<uint8_t>(x))
+#define SIGN_8( x ) (static_cast<int8_t>(x))
+#define UNSIGN_16( x ) (static_cast<uint16_t>(x))
+#define SIGN_16( x ) (static_cast<int16_t>(x))
+#define UPCAST_FLT( x ) (static_cast<float>(x))
 
 #ifndef __x86_64
 ArmDevice::ArmDevice(){
@@ -11,7 +18,7 @@ ArmDevice::ArmDevice(){
         //throw BusError;
     }
 
-    if (ioctl(this->motorBus_, I2C_SLAVE, this->coprocessorAddress_) < 0) {
+    if (ioctl(this->motorBus_, UNSIGN_16(I2C_SLAVE), this->coprocessorAddress_) < 0) {
         //throw BusError;
     }
 
@@ -20,7 +27,7 @@ ArmDevice::ArmDevice(){
         //throw BusError;
     }
 
-    if (ioctl(this->ledBus_, I2C_SLAVE, this->hatAddress_) < 0) {
+    if (ioctl(this->ledBus_, UNSIGN_16(I2C_SLAVE), this->hatAddress_) < 0) {
         //throw BusError;
     }
 
@@ -31,164 +38,184 @@ ArmDevice::ArmDevice(){
     ArmDevice::ArmDevice() = default;
 #endif
 
-void ArmDevice::buzz(uint8_t time) const {
-    std::array<uint8_t, 2> buf = {0x06U, time};
-    if (write(motorBus_, buf.data(), 2) < 0) {
+void ArmDevice::buzz(int8_t time) const {
+    std::array<int8_t, 2U> buf = {0x06, time};
+    if (write(motorBus_, buf.data(), 2U) < 0) {
         throw std::runtime_error("i2c bus error for function buzz!");
     }
 }
 
 void ArmDevice::noBuzz() const {
-    std::array<uint8_t, 2> buf = {0x06U, 0};
-    if (write(motorBus_, buf.data(),2) < 0) {
+    std::array<int8_t, 2U> buf = {0x06, 0};
+    if (write(motorBus_, buf.data(),2U) < 0) {
         throw std::runtime_error("i2c bus error for function nobuzz!");
     }
 }
 
-[[maybe_unused]] void ArmDevice::servoWrite(uint8_t id, float angle, uint16_t time) {
+
+
+inline void checkAndThrow(int8_t expression, int8_t value, const std::string& handle)
+{
+    if ( expression != value)
+    {
+        throw std::runtime_error("Communication failure at " + handle);
+    }
+}
+
+
+[[maybe_unused]] void ArmDevice::servoWrite(int8_t id, float angle, int16_t time) {
     if( id == 0 ){
-            std::array<float, 6> angles = {angle, angle, angle, angle, angle, angle};
+            std::array<float, 6U> angles = {angle, angle, angle, angle, angle, angle};
             this->servoWrite6(angles.data(), time);
         }else{
-            uint8_t value_h; uint8_t value_l;
-            uint8_t time_h; uint8_t time_l;
-            uint16_t pos;
+            int8_t value_h; int8_t value_l;
+            int8_t time_h; int8_t time_l;
+            int16_t pos;
 
             switch (id) {
                 case 2:
                 case 3:
-                case 4:
+                case 4: {
                     angle = angle;
-                    pos = int((3100 - 900) * (angle - 0) / (180 - 0) + 900);
+                    pos = FLOOR_16(2200.0F * angle / 180.0F + 900.0F);
                     break;
-                case 5:
-                    pos = int((3700 - 380) * (angle - 0) / (270 - 0) + 380);
+                }
+                case 5: {
+                    pos = FLOOR_16(3320.0F * angle / 270.0F + 380.0F);
                     break;
-                default:
-                    pos = int((3100 - 900) * (angle - 0) / (180 - 0) + 900);
-                    std::cout << pos << '\n';
+                }
+                default: {
+                    pos = FLOOR_16(2200.0F * angle / 180.0F + 900.0F);
                     break;
+                }
             }
 
-            value_h = (pos >> 8) & 0xFF;
-            value_l = pos & 0xFF;
+            value_h = TRUNC_8((pos >> 8) & 0xFF);
+            value_l = TRUNC_8(pos & 0xFF);
 
-            time_h = (time >> 8) & 0xFF;
-            time_l = time & 0xFF;
+            time_h = TRUNC_8((time >> 8) & 0xFF);
+            time_l = TRUNC_8(time & 0xFF);
 
-            std::array<uint8_t, 5> buf = {
-                    static_cast<uint8_t>((0x10 + id)),
+            std::array<int8_t, 5U> buf = {
+                    static_cast<int8_t>((0x10 + id)),
                     value_h,
                     value_l,
                     time_h,
                     time_l
             };
 
-            write(this->motorBus_, buf.data(), 5);
+            if ( write(this->motorBus_, buf.data(), 5U) != 5)
+            {
+                throw std::runtime_error("Communication failure!");
+            }
 
     }
 }
 
-void ArmDevice::servoWrite6(const float *angles, const uint16_t time) {
-    std::array<uint8_t, 14> byte_array = {0};
-    byte_array[0] = 0x1D;
-
+void ArmDevice::servoWrite6(const float *angles, const int16_t time) {
+    std::array<int8_t, 14U> byte_array = {0};
+    byte_array.at(0U) = 0x1D;
 
     // note: angle validity should not be checked here
 
-    for (uint8_t i = 2; i < 13; i += 2) {
+    for (int8_t i = 2; i < 13; i += 2) {
         float pos;
         switch (i / 2) {
             case 2:
             case 3:{
-                float angle = angles[i / 2 - 1] + 90;
-                pos = ((3100.0f - 900.0f) * (float) angle / 180.0f + 900.0f);
+                float angle = angles[i / 2 - 1] + 90.0F;
+                pos = 2200.0F * angle / 180.0F + 900.0F;
                 break;
             }
             case 4:{
-                float angle = angles[i / 2 - 1] + 180 - 5;
-                pos = ((3100.0f - 900.0f) * (float) angle / 180.0f + 900.0f);
+                float angle = angles[i / 2 - 1] + 180.0F - 5.0F;
+                pos = 2200.0F * angle / 180.0F + 900.0F;
                 break;
             }
             case 5:
-                pos = ((3700.0f - 380.0f) * (float) (angles[i / 2 - 1] + 90 ) / 270.0f + 380.0f);
+                pos = 3320.0F *  (angles[i / 2 - 1] + 90.0F ) / 270.0F + 380.0F;
                 break;
             default:
-                pos = ((3100.0f - 900.0f) * (angles[i / 2 - 1] + 90 ) / 180.0f + 900.0f);
+                pos = 2200.0F * (angles[i / 2 - 1] + 90.0F ) / 180.0F + 900.0F;
                 break;
         }
 
-        uint16_t p_adj = static_cast<int>(pos);
-        byte_array[i - 1] = (p_adj >> 8) & 0xFF;
-        byte_array[i] = p_adj & 0xFF;
+        int16_t p_adj = FLOOR_16(pos);
+        byte_array.at(UNSIGN_8(i - 1)) = TRUNC_8((p_adj >> 8) & 0xFF);
+        byte_array.at(UNSIGN_8( i )) = TRUNC_8(p_adj & 0xFF);
     }
 
-    busCleaner(byte_array.data(), time);
+    busCleaner(byte_array, time);
 }
 
 void ArmDevice::toggleTorque(bool torque) const {
-    std::array<uint8_t, 2> buf = {0x1A, uint8_t(torque)};
-
-    write(this->motorBus_, buf.data(), 2);    // this is necessary since sometimes
-    write(this->motorBus_, buf.data(), 2);    // the command will not register properly
-
+    std::array<int8_t, 2U> buf = {0x1A, SIGN_8(torque)};
+    checkAndThrow(
+            SIGN_8(write(this->motorBus_, buf.data(), 2U)) +
+                        SIGN_8(write(this->motorBus_, buf.data(), 2U)),
+            4,
+            "toggleTorque"
+            );
 }
 
-void ArmDevice::RGB(uint8_t r, uint8_t g, uint8_t b) const {
-    std::array<uint8_t, 4> buf = {0x02, r, g, b};
-    write(this->motorBus_, buf.data(), 4);
+
+
+[[maybe_unused]] void ArmDevice::rgb(int8_t r, int8_t g, int8_t b) const {
+    std::array<int8_t, 4U> buf = {0x02, r, g, b};
+    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 4U)), 4, "RGB");
+
 }
 
 [[maybe_unused]] void ArmDevice::resetMcu() const {
-    std::array<uint8_t, 2> buf = {0x05, 0x01};
-    write(this->motorBus_, buf.data(), 2);
+    std::array<int8_t, 2U> buf = {0x05, 0x01};
+    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 2U)), 2, "resetMCU");
 }
 
-bool ArmDevice::pingServo(uint8_t id) const {
-    std::array<uint8_t, 2> buf = {0x38, id};
-    write(this->motorBus_, buf.data(), 2);
-    uint8_t value = i2c_smbus_read_byte_data(this->motorBus_, 0x38);
-    return bool(value);
+bool ArmDevice::pingServo(int8_t id) const {
+    std::array<int8_t, 2U> buf = {0x38, id};
+    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 2U)), 2, "pingServo");
+    int8_t value = SIGN_8(i2c_smbus_read_byte_data(this->motorBus_, 0x38U));
+    return value;
 }
 
 void ArmDevice::buttonMode(int mode) const                              // undocumented function
 {
-    std::array<uint8_t, 2> buf = {0x03, static_cast<uint8_t> ( mode )};
-    write(this->motorBus_, buf.data(), 2);
-    write(this->motorBus_, buf.data(), 2);
+    std::array<int8_t, 2U> buf = {0x03, static_cast<int8_t> ( mode )};
+    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 2U)), 2, "buttonMode");
+    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 2U)), 2, "buttonMode");
+    //write(this->motorBus_, buf.data(), 2);
 }
 
-float ArmDevice::servoRead(uint8_t id) const {
+float ArmDevice::servoRead(int8_t id) const {
     if (((id > 6) || (id < 1))) {
         throw std::runtime_error("Servo ID specified was out of range (1, 6) for ServoRead");
     }
 
-    std::array<uint8_t, 2> buf = {id + 0x30, 0};
-    write(this->motorBus_, buf.data(), 2);
+    std::array<int8_t, 2U> buf = {TRUNC_8(id + 0x30), 0};
 
-    usleep(3000);
+    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 2U)), 2, "servoRead");
+    (void)usleep(3000U);
 
-    uint16_t pos = i2c_smbus_read_word_data(this->motorBus_, id);
-    pos = (pos >> 8 & 0xff) | (pos << 8 & 0xff00);
-
+    int16_t pos = FLOOR_16(i2c_smbus_read_word_data(this->motorBus_, UNSIGN_8(id)));
+    pos = SIGN_16(pos >> 8 & 0xff) | SIGN_16(pos << 8 & 0xff00);
 
     float val = NAN;
-    switch ((int) id) {
+    switch (id) {
         case 5: {
-            val = 270.0f * (static_cast<float> (pos) - 380.0f) / (3700.0f - 380.0f) - 90.0f;
+            val = 270.0F * (UPCAST_FLT(pos) - 380.0F) / 3320.0F - 90.0F;
             break;
         }
         case 2:
         case 3:{
-            val = std::floor( 180.0f * (static_cast<float> (pos) - 900.0f) / (3100.0f - 900.0f) ) - 90;
+            val = 180.0F * (UPCAST_FLT(pos) - 900.0F) / 2200.0F - 90.0F;
             break;
         }
         case 4:{
-            val = std::floor( 180.0f * (static_cast<float> (pos) - 900.0f) / (3100.0f - 900.0f) ) - 180 + 4;
+            val = 180.0F * (UPCAST_FLT(pos) - 900.0F) / 2200.0F - 180.0F + 4.0F;
             break;
         }
         default: {
-            val = 180 * (static_cast<float> (pos) - 900) / (3100 - 900) - 90;
+            val = 180.0F * (UPCAST_FLT(pos) - 900.0F) / 2200.0F - 90.0F;
             break;
         }
 
@@ -196,56 +223,54 @@ float ArmDevice::servoRead(uint8_t id) const {
     return val;
 }
 
-std::array<float, 6> ArmDevice::servoReadall() const        // note: this was migrated from returning
+std::array<float, 6U> ArmDevice::servoReadall() const        // note: this was migrated from returning
 {                                                           // a dynamic pointer to a more human array
-    std::array<float, 6> values{};
-    for (uint8_t i = 1; i <= 6; i++) {
+    std::array<float, 6U> values{};
+    for (int8_t i = 1; i <= 6; i++) {
 
-        values[i - 1] = this->servoRead(i);
+        values.at(UNSIGN_8(i - 1)) = this->servoRead(i);
     }
-
     return values;
 }
 
-void ArmDevice::servoSetId(uint8_t id) const {
-    std::array<uint8_t, 2> buf = {0x18, id};
-    write(this->motorBus_, buf.data(), 2);
+void ArmDevice::servoSetId(int8_t id) const {
+    std::array<int8_t, 2U> buf = {0x18, id};
+    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 2U)), 2, "servoSetId");
 }
 
-void ArmDevice::busCleaner(uint8_t *dest,
-                           uint16_t time)           // function introduced by me to prevent spamming the motorBus
+void ArmDevice::busCleaner(const std::array<int8_t, 14U> dest,
+                           int16_t time)           // function introduced by me to prevent spamming the motorBus
 {
-    std::array<uint8_t, 13> t{};
-    std::copy(dest, dest + 13, t.begin());
-
-
-    if (t != target_) {
-        std::array<uint8_t, 3> time_array =
+    if (dest != target_) {
+        std::array<int8_t, 3U> time_array =
                 {
                         0x1E,
-                        static_cast<uint8_t>((time >> 8)),
-                        static_cast<uint8_t>(time)
+                        SIGN_8(time >> 8),
+                        SIGN_8(time)
                 };
-
-        write(this->motorBus_, time_array.data(), 3);
-        write(this->motorBus_, dest, 13);
-        target_ = t;
+        checkAndThrow(SIGN_8(write(this->motorBus_, time_array.data(), 3U)), 3, "busCleaner");
+        checkAndThrow(SIGN_8(write(this->motorBus_, dest.data(), 13U)), 13, "busCleaner");
+        target_ = dest;
     }
+}
+
+void ArmDevice::servoWriteAny(int8_t id, int16_t angle, int16_t time) const {
+
 }
 /*
  *
  * Maybe planned for implementation
-void ArmDevice::setRGBColor(uint8_t color) {
+void ArmDevice::setRGBColor(int8_t color) {
 }
 
-void ArmDevice::setRGBSpeed(uint8_t speed) {
+void ArmDevice::setRGBSpeed(int8_t speed) {
 }
 
-void ArmDevice::setRGBEffect(uint8_t effect) {
+void ArmDevice::setRGBEffect(int8_t effect) {
 }
 
 void ArmDevice::closeRGB() {
 }
 
-void ArmDevice::setRGB(uint led, uint8_t r, uint8_t g, uint8_t b) {
+void ArmDevice::setRGB(uint led, int8_t r, int8_t g, int8_t b) {
 }*/
