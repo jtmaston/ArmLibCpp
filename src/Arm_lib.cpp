@@ -33,21 +33,50 @@ ArmDevice::ArmDevice(){
 
     target_.fill(0);
     }
+    inline size_t writeToBus(int fd, const void* buf, size_t n)
+    {
+        return write(fd, buf, n);
+    }
+    inline int readWordFromBus(int fd, uint8_t command)
+    {
+        return i2c_smbus_read_word_data(fd, command);
+    }
+    inline int readByteFromBus(int fd, uint8_t command)
+    {
+        return i2c_smbus_read_byte_data(fd, command);
+    }
+
 #else
     #warning Detected to be running under x86, i2c bus calls will be disabled!
     ArmDevice::ArmDevice() = default;
+    inline size_t writeToBus(int fd, const void* buf, size_t n)
+    {
+        return n;
+    }
+
+    inline int readWordFromBus(int fd, uint8_t command)
+    {
+        return 0;
+    }
+    inline int readByteFromBus(int fd, uint8_t command)
+    {
+        return 0;
+    }
+
 #endif
+
+
 
 void ArmDevice::buzz(int8_t time) const {
     std::array<int8_t, 2U> buf = {0x06, time};
-    if (write(motorBus_, buf.data(), 2U) < 0) {
+    if (writeToBus(motorBus_, buf.data(), 2U) < 0) {
         throw std::runtime_error("i2c bus error for function buzz!");
     }
 }
 
 void ArmDevice::noBuzz() const {
     std::array<int8_t, 2U> buf = {0x06, 0};
-    if (write(motorBus_, buf.data(),2U) < 0) {
+    if (writeToBus(motorBus_, buf.data(), 2U) < 0) {
         throw std::runtime_error("i2c bus error for function nobuzz!");
     }
 }
@@ -104,7 +133,7 @@ inline void checkAndThrow(int8_t expression, int8_t value, const std::string& ha
                     time_l
             };
 
-            if ( write(this->motorBus_, buf.data(), 5U) != 5)
+            if (writeToBus(this->motorBus_, buf.data(), 5U) != 5)
             {
                 throw std::runtime_error("Communication failure!");
             }
@@ -151,8 +180,8 @@ void ArmDevice::servoWrite6(const float *angles, const int16_t time) {
 void ArmDevice::toggleTorque(bool torque) const {
     std::array<int8_t, 2U> buf = {0x1A, SIGN_8(torque)};
     checkAndThrow(
-            SIGN_8(write(this->motorBus_, buf.data(), 2U)) +
-                        SIGN_8(write(this->motorBus_, buf.data(), 2U)),
+            SIGN_8(writeToBus(this->motorBus_, buf.data(), 2U)) +
+            SIGN_8(writeToBus(this->motorBus_, buf.data(), 2U)),
             4,
             "toggleTorque"
             );
@@ -162,27 +191,27 @@ void ArmDevice::toggleTorque(bool torque) const {
 
 [[maybe_unused]] void ArmDevice::rgb(int8_t r, int8_t g, int8_t b) const {
     std::array<int8_t, 4U> buf = {0x02, r, g, b};
-    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 4U)), 4, "RGB");
+    checkAndThrow(SIGN_8(writeToBus(this->motorBus_, buf.data(), 4U)), 4, "RGB");
 
 }
 
 [[maybe_unused]] void ArmDevice::resetMcu() const {
     std::array<int8_t, 2U> buf = {0x05, 0x01};
-    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 2U)), 2, "resetMCU");
+    checkAndThrow(SIGN_8(writeToBus(this->motorBus_, buf.data(), 2U)), 2, "resetMCU");
 }
 
 bool ArmDevice::pingServo(int8_t id) const {
     std::array<int8_t, 2U> buf = {0x38, id};
-    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 2U)), 2, "pingServo");
-    int8_t value = SIGN_8(i2c_smbus_read_byte_data(this->motorBus_, 0x38U));
+    checkAndThrow(SIGN_8(writeToBus(this->motorBus_, buf.data(), 2U)), 2, "pingServo");
+    int8_t value = SIGN_8(readByteFromBus(this->motorBus_, 0x38U));
     return value;
 }
 
 void ArmDevice::buttonMode(int mode) const                              // undocumented function
 {
     std::array<int8_t, 2U> buf = {0x03, static_cast<int8_t> ( mode )};
-    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 2U)), 2, "buttonMode");
-    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 2U)), 2, "buttonMode");
+    checkAndThrow(SIGN_8(writeToBus(this->motorBus_, buf.data(), 2U)), 2, "buttonMode");
+    checkAndThrow(SIGN_8(writeToBus(this->motorBus_, buf.data(), 2U)), 2, "buttonMode");
     //write(this->motorBus_, buf.data(), 2);
 }
 
@@ -193,10 +222,10 @@ float ArmDevice::servoRead(int8_t id) const {
 
     std::array<int8_t, 2U> buf = {TRUNC_8(id + 0x30), 0};
 
-    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 2U)), 2, "servoRead");
+    checkAndThrow(SIGN_8(writeToBus(this->motorBus_, buf.data(), 2U)), 2, "servoRead");
     (void)usleep(3000U);
 
-    int16_t pos = FLOOR_16(i2c_smbus_read_word_data(this->motorBus_, UNSIGN_8(id)));
+    int16_t pos = FLOOR_16(readWordFromBus(this->motorBus_, UNSIGN_8(id)));
     pos = SIGN_16(pos >> 8 & 0xff) | SIGN_16(pos << 8 & 0xff00);
 
     float val = NAN;
@@ -235,7 +264,7 @@ std::array<float, 6U> ArmDevice::servoReadall() const        // note: this was m
 
 void ArmDevice::servoSetId(int8_t id) const {
     std::array<int8_t, 2U> buf = {0x18, id};
-    checkAndThrow(SIGN_8(write(this->motorBus_, buf.data(), 2U)), 2, "servoSetId");
+    checkAndThrow(SIGN_8(writeToBus(this->motorBus_, buf.data(), 2U)), 2, "servoSetId");
 }
 
 void ArmDevice::busCleaner(const std::array<int8_t, 14U> dest,
@@ -248,8 +277,8 @@ void ArmDevice::busCleaner(const std::array<int8_t, 14U> dest,
                         SIGN_8(time >> 8),
                         SIGN_8(time)
                 };
-        checkAndThrow(SIGN_8(write(this->motorBus_, time_array.data(), 3U)), 3, "busCleaner");
-        checkAndThrow(SIGN_8(write(this->motorBus_, dest.data(), 13U)), 13, "busCleaner");
+        checkAndThrow(SIGN_8(writeToBus(this->motorBus_, time_array.data(), 3U)), 3, "busCleaner");
+        checkAndThrow(SIGN_8(writeToBus(this->motorBus_, dest.data(), 13U)), 13, "busCleaner");
         target_ = dest;
     }
 }
