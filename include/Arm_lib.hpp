@@ -1,5 +1,4 @@
-#ifndef ROBOTDASHBOARD_ARM_LIB_HPP
-#define ROBOTDASHBOARD_ARM_LIB_HPP
+#pragma once
 
 #include <cstdlib>
 #include <cstdio>
@@ -22,49 +21,54 @@ extern "C"
 
 #define RAD 0.0174533
 
-class ArmDevice {
-public:
-    std::vector<std::vector<float>> learnedAngles_;
-
+class ArmDevice
+{
+    public:
     ArmDevice();
 
 
-    [[maybe_unused]] void buzz(uint8_t time = 10) const;                  // start the buzzer
-    [[maybe_unused]] void noBuzz() const;                                 // stop the buzzer
+    void buzz(int8_t time = 10) const ;                                                   // start the buzzer
+    void noBuzz() const;                                                                  // stop the buzzer
 
-    [[maybe_unused]] void rgb(uint8_t r, uint8_t g, uint8_t b) const;     // set the RGB LED value
-    [[maybe_unused]] void resetMcu() const;                               // reset microcontroller
-    [[maybe_unused]] [[maybe_unused]] [[nodiscard]] bool pingServo(int8_t id) const;                        // ping to test if servo is available
-    [[maybe_unused]] void buttonMode();                                   // undocumented function
+    [[maybe_unused]] void rgb(int8_t r, int8_t g, int8_t b) const;                                      // set the rgb led value
+    void resetMcu() const;                                                               // reset microcontroller
+    [[nodiscard]] bool pingServo(
+            int8_t id) const;                                                    // ping to test if servo is available
+    void buttonMode(int mode) const;                                                    // undocumented function
 
-    [[maybe_unused]] void servoWriteAny(uint8_t id, uint16_t angle,
-                                        uint16_t time) const;              // write value to any servo ( id 0 to 255 )
-    [[maybe_unused]] void servoWrite(uint8_t id, uint16_t angle, uint16_t time);            // write to single servo ( id 1 to 6)
-    [[maybe_unused]] void servoWrite(uint8_t id, float angle, uint16_t time);               // write to single servo ( id 1 to 6)
-    [[maybe_unused]] void servoWrite6(const uint16_t angles[6], uint16_t time);             // write to 6 servos
-    void servoWrite6(const float angles[6], uint16_t time);                // write to 6 servos , with cast to int
-    void toggleTorque(bool torque) const;                                  // turn torque on engines on and off
+    void servoWriteAny(int8_t id, int16_t angle,
+                       int16_t time) const;                // write value to any servo ( id 0 to 255 )         // write to single servo ( id 1 to 6)
+     void servoWrite(int8_t id, float angle,
+                    int16_t time);                    // write to single servo ( id 1 to 6)         // write to 6 servos
+    void servoWrite6(std::vector<float> angles,
+                     int16_t time);                          // write to 6 servos , with downcast from float
+    void
+    toggleTorque(bool torque) const;                                               // turn torque on engines on and off
 
 
-    [[maybe_unused]] [[nodiscard]] float servoReadAny(uint8_t id) const;                    // read any id from 1 to 6
-    [[nodiscard]] float servoRead(uint8_t id) const;                       // read any id from 0 to 255
-    [[nodiscard]] float* servoReadall() const;                             // read all 6 servos at once
+    //[[nodiscard]] float
+    //servoReadAny(int8_t id) const;                                           // read any id from 1 to 6
+    [[nodiscard]] float
+    servoRead(int8_t id) const;                                               // read any id from 0 to 255
+    [[nodiscard]] std::array<float, 6U>
+    servoReadall() const;                                                     // read all 6 servos at once
 
-    [[maybe_unused]] void servoSetId(uint8_t id) const;                                     // program the servo for id
-    std::array<uint8_t, 13> target_{};
-
-    void busCleaner(uint8_t *dest, uint16_t time);
-
-    int addr_ = 0x15;                                                       // address of the microcontroller
-    int bus_ = -1;                                                          // I2C bus_
+    void servoSetId (int8_t id) const;                                                  // initializeInterpreterThread the servo for id
+                            // used in cleaning the motorBus, a buffer of the old destination command
+    void busCleaner(std::array<int8_t, 14U> dest,
+                    int16_t time);         // write onto the motorBus, only if the coordinates haven't already been sent
+private:
+    std::array<int8_t, 14U> target_{};
+    const int coprocessorAddress_ = 0x15;
+    const int hatAddress_ = 0x0d;
+    int motorBus_ = -1;                                             // I2C motorBus
     int ledBus_ = -1;
-    int ledAddr_ = 0x0d;
 
-    // void setRGBColor(uint8_t color);                     TODO: implement these
-    // void setRGBSpeed(uint8_t speed);
-    // void setRGBEffect(uint8_t effect);
-    // void closeRGB();
-    // void setRGB(uint led, uint8_t r, uint8_t g, uint8_t b);
+
+    /*void setRGBColor(int8_t color);
+    void setRGBSpeed(int8_t speed);
+    void setRGBEffect(int8_t effect);
+    void closeRGB();
+    void setRGB(int led, int8_t r, int8_t g, int8_t b);*/
 };
 
-#endif
