@@ -94,8 +94,8 @@ inline void checkAndThrow(int8_t expression, int8_t value, const std::string& ha
 
 [[maybe_unused]] void ArmDevice::servoWrite(int8_t id, float angle, int16_t time) {
     if( id == 0 ){
-            std::array<float, 6U> angles = {angle, angle, angle, angle, angle, angle};
-            this->servoWrite6(angles.data(), time);
+            std::vector<float> angles = {angle, angle, angle, angle, angle, angle};
+            this->servoWrite6(angles, time);
         }else{
             int8_t value_h; int8_t value_l;
             int8_t time_h; int8_t time_l;
@@ -141,7 +141,7 @@ inline void checkAndThrow(int8_t expression, int8_t value, const std::string& ha
     }
 }
 
-void ArmDevice::servoWrite6(const float *angles, const int16_t time) {
+void ArmDevice::servoWrite6(std::vector<float> angles, const int16_t time) {
     std::array<int8_t, 14U> byte_array = {0};
     byte_array.at(0U) = 0x1D;
 

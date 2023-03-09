@@ -40,7 +40,7 @@ class ArmDevice
                        int16_t time) const;                // write value to any servo ( id 0 to 255 )         // write to single servo ( id 1 to 6)
      void servoWrite(int8_t id, float angle,
                     int16_t time);                    // write to single servo ( id 1 to 6)         // write to 6 servos
-    void servoWrite6(const float *angles,
+    void servoWrite6(std::vector<float> angles,
                      int16_t time);                          // write to 6 servos , with downcast from float
     void
     toggleTorque(bool torque) const;                                               // turn torque on engines on and off
