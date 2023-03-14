@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.18)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 project(5DOF VERSION 0.1 LANGUAGES CXX)
+SET(CMAKE_CXX_STANDARD 20)
+
+include(lib/libSerial/CMakeLists.txt)
 
 add_library(5DOF STATIC
     ${PROJECT_SOURCE_DIR}/src/Arm_lib.cpp

@@ -3,68 +3,115 @@
 #include <cmath>
 #include <iostream>
 
-#define FLOOR_16( x ) ( static_cast<int16_t>(std::floor(x) ))
-#define TRUNC_8( x ) (static_cast<int8_t>(x))
-#define UNSIGN_8( x ) (static_cast<uint8_t>(x))
-#define SIGN_8( x ) (static_cast<int8_t>(x))
-#define UNSIGN_16( x ) (static_cast<uint16_t>(x))
-#define SIGN_16( x ) (static_cast<int16_t>(x))
-#define UPCAST_FLT( x ) (static_cast<float>(x))
+#define FLOOR_16(x) ( static_cast<int16_t>(std::floor(x) ))
+#define TRUNC_8(x) (static_cast<int8_t>(x))
+#define UNSIGN_8(x) (static_cast<uint8_t>(x))
+#define SIGN_8(x) (static_cast<int8_t>(x))
+#define UNSIGN_16(x) (static_cast<uint16_t>(x))
+#define SIGN_16(x) (static_cast<int16_t>(x))
+#define UPCAST_FLT(x) (static_cast<float>(x))
+
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 #ifndef __x86_64
-ArmDevice::ArmDevice(){
-    this->motorBus_ = open("/dev/i2c-1", O_RDWR);
-    if (this->motorBus_ < 0) {
-        //throw BusError;
+
+ArmDevice::ArmDevice() {
+
+    std::vector<std::string> port_names;
+    fs::path p("/dev/serial/by-id");
+    if (!exists(p)) {
+        throw std::runtime_error("No serial port!");
+    } else {
+        for (auto de: fs::directory_iterator(p)) {
+            if (is_symlink(de.symlink_status())) {
+                fs::path symlink_points_at = read_symlink(de);
+                fs::path canonical_path = fs::canonical(p / symlink_points_at);
+
+                motorBus_ = open(canonical_path.generic_string().c_str(), O_RDWR);
+            }
+        }
     }
 
-    if (ioctl(this->motorBus_, UNSIGN_16(I2C_SLAVE), this->coprocessorAddress_) < 0) {
-        //throw BusError;
+    if (tcgetattr(motorBus_, &tty) != 0) {
+        printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
     }
 
-    this->ledBus_ = open("/dev/i2c-1", O_RDWR);
-    if (this->ledBus_ < 0) {
-        //throw BusError;
+    tty.c_cflag |= PARENB;  // Set parity bit, enabling parity
+    //tty.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
+    tty.c_cflag |= CSTOPB;  // Set stop field, two stop bits used in communication
+    tty.c_cflag &= ~CSIZE; // Clear all the size bits, then use one of the statements below
+    tty.c_cflag |= CS8; // 8 bits per byte (most common)
+    tty.c_cflag |= CRTSCTS;  // Enable RTS/CTS hardware flow control
+    tty.c_cflag |= CREAD | CLOCAL;
+    tty.c_lflag &= ~ICANON;
+    tty.c_lflag &= ~ECHO; // Disable echo
+    tty.c_lflag &= ~ECHOE; // Disable erasure
+    tty.c_lflag &= ~ECHONL; // Disable new-line echo
+    tty.c_lflag &= ~ISIG; // Disable interpretation of INTR, QUIT and SUSP
+    tty.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
+    tty.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR |
+                     ICRNL); // Disable any special handling of received bytes
+    tty.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
+    tty.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
+    tty.c_cc[VTIME] = 10;    // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
+    tty.c_cc[VMIN] = 0;
+
+    cfsetispeed(&tty, B9600);
+    cfsetospeed(&tty, B9600);
+
+    if (tcsetattr(motorBus_, TCSANOW, &tty) != 0) {
+        printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
     }
 
-    if (ioctl(this->ledBus_, UNSIGN_16(I2C_SLAVE), this->hatAddress_) < 0) {
-        //throw BusError;
-    }
+    /*uint8_t buf[] = "VR\r\n";
+    write(motorBus_, buf, sizeof(buf));
 
-    target_.fill(0);
-    }
-    inline size_t writeToBus(int fd, const void* buf, size_t n)
-    {
-        return write(fd, buf, n);
-    }
-    inline int readWordFromBus(int fd, uint8_t command)
-    {
-        return i2c_smbus_read_word_data(fd, command);
-    }
-    inline int readByteFromBus(int fd, uint8_t command)
-    {
-        return i2c_smbus_read_byte_data(fd, command);
-    }
+    char read_buf[256];
+    int n = read(motorBus_, &read_buf, sizeof(read_buf));
+    if(strncmp(read_buf, "RV-E", 4) != 0)
+        std::cout << "Unsupported robot model!";*/
+
+    usleep(1e3);
+    uint8_t goHome[] = "MP 574.84,0.00,565.45,-180.00,69.99,-180.00,R,A,N\r\n";
+    write(motorBus_, goHome, sizeof(goHome));
+
+}
+
+inline size_t writeToBus(int fd, const void *buf, size_t n) {
+    return 0;
+    //return write(fd, buf, n);
+}
+
+inline int readWordFromBus(int fd, uint8_t command) {
+    return 0;
+    //return i2c_smbus_read_word_data(fd, command);
+}
+
+inline int readByteFromBus(int fd, uint8_t command) {
+    return 0;
+    //return i2c_smbus_read_byte_data(fd, command);
+}
 
 #else
-    #warning Detected to be running under x86, i2c bus calls will be disabled!
-    ArmDevice::ArmDevice() = default;
-    inline size_t writeToBus(int fd, const void* buf, size_t n)
-    {
-        return n;
-    }
+#warning Detected to be running under x86, i2c bus calls will be disabled!
+ArmDevice::ArmDevice() = default;
+inline size_t writeToBus(int fd, const void* buf, size_t n)
+{
+    return n;
+}
 
-    inline int readWordFromBus(int fd, uint8_t command)
-    {
-        return 0;
-    }
-    inline int readByteFromBus(int fd, uint8_t command)
-    {
-        return 0;
-    }
+inline int readWordFromBus(int fd, uint8_t command)
+{
+    return 0;
+}
+inline int readByteFromBus(int fd, uint8_t command)
+{
+    return 0;
+}
 
 #endif
-
 
 
 void ArmDevice::buzz(int8_t time) const {
@@ -82,61 +129,59 @@ void ArmDevice::noBuzz() const {
 }
 
 
-
-inline void checkAndThrow(int8_t expression, int8_t value, const std::string& handle)
-{
-    if ( expression != value)
-    {
+inline void checkAndThrow(int8_t expression, int8_t value, const std::string &handle) {
+    /*if (expression != value) {
         throw std::runtime_error("Communication failure at " + handle);
-    }
+    }*/
 }
 
 
 [[maybe_unused]] void ArmDevice::servoWrite(int8_t id, float angle, int16_t time) {
-    if( id == 0 ){
-            std::vector<float> angles = {angle, angle, angle, angle, angle, angle};
-            this->servoWrite6(angles, time);
-        }else{
-            int8_t value_h; int8_t value_l;
-            int8_t time_h; int8_t time_l;
-            int16_t pos;
+    if (id == 0) {
+        std::vector<float> angles = {angle, angle, angle, angle, angle, angle};
+        this->servoWrite6(angles, time);
+    } else {
+        int8_t value_h;
+        int8_t value_l;
+        int8_t time_h;
+        int8_t time_l;
+        int16_t pos;
 
-            switch (id) {
-                case 2:
-                case 3:
-                case 4: {
-                    angle = angle;
-                    pos = FLOOR_16(2200.0F * angle / 180.0F + 900.0F);
-                    break;
-                }
-                case 5: {
-                    pos = FLOOR_16(3320.0F * angle / 270.0F + 380.0F);
-                    break;
-                }
-                default: {
-                    pos = FLOOR_16(2200.0F * angle / 180.0F + 900.0F);
-                    break;
-                }
+        switch (id) {
+            case 2:
+            case 3:
+            case 4: {
+                angle = angle;
+                pos = FLOOR_16(2200.0F * angle / 180.0F + 900.0F);
+                break;
             }
-
-            value_h = TRUNC_8((pos >> 8) & 0xFF);
-            value_l = TRUNC_8(pos & 0xFF);
-
-            time_h = TRUNC_8((time >> 8) & 0xFF);
-            time_l = TRUNC_8(time & 0xFF);
-
-            std::array<int8_t, 5U> buf = {
-                    static_cast<int8_t>((0x10 + id)),
-                    value_h,
-                    value_l,
-                    time_h,
-                    time_l
-            };
-
-            if (writeToBus(this->motorBus_, buf.data(), 5U) != 5)
-            {
-                throw std::runtime_error("Communication failure!");
+            case 5: {
+                pos = FLOOR_16(3320.0F * angle / 270.0F + 380.0F);
+                break;
             }
+            default: {
+                pos = FLOOR_16(2200.0F * angle / 180.0F + 900.0F);
+                break;
+            }
+        }
+
+        value_h = TRUNC_8((pos >> 8) & 0xFF);
+        value_l = TRUNC_8(pos & 0xFF);
+
+        time_h = TRUNC_8((time >> 8) & 0xFF);
+        time_l = TRUNC_8(time & 0xFF);
+
+        std::array<int8_t, 5U> buf = {
+                static_cast<int8_t>((0x10 + id)),
+                value_h,
+                value_l,
+                time_h,
+                time_l
+        };
+
+        if (writeToBus(this->motorBus_, buf.data(), 5U) != 5) {
+            throw std::runtime_error("Communication failure!");
+        }
 
     }
 }
@@ -151,27 +196,27 @@ void ArmDevice::servoWrite6(std::vector<float> angles, const int16_t time) {
         float pos;
         switch (i / 2) {
             case 2:
-            case 3:{
+            case 3: {
                 float angle = angles[i / 2 - 1] + 90.0F;
                 pos = 2200.0F * angle / 180.0F + 900.0F;
                 break;
             }
-            case 4:{
+            case 4: {
                 float angle = angles[i / 2 - 1] + 180.0F - 5.0F;
                 pos = 2200.0F * angle / 180.0F + 900.0F;
                 break;
             }
             case 5:
-                pos = 3320.0F *  (angles[i / 2 - 1] + 90.0F ) / 270.0F + 380.0F;
+                pos = 3320.0F * (angles[i / 2 - 1] + 90.0F) / 270.0F + 380.0F;
                 break;
             default:
-                pos = 2200.0F * (angles[i / 2 - 1] + 90.0F ) / 180.0F + 900.0F;
+                pos = 2200.0F * (angles[i / 2 - 1] + 90.0F) / 180.0F + 900.0F;
                 break;
         }
 
         int16_t p_adj = FLOOR_16(pos);
         byte_array.at(UNSIGN_8(i - 1)) = TRUNC_8((p_adj >> 8) & 0xFF);
-        byte_array.at(UNSIGN_8( i )) = TRUNC_8(p_adj & 0xFF);
+        byte_array.at(UNSIGN_8(i)) = TRUNC_8(p_adj & 0xFF);
     }
 
     busCleaner(byte_array, time);
@@ -184,9 +229,8 @@ void ArmDevice::toggleTorque(bool torque) const {
             SIGN_8(writeToBus(this->motorBus_, buf.data(), 2U)),
             4,
             "toggleTorque"
-            );
+    );
 }
-
 
 
 [[maybe_unused]] void ArmDevice::rgb(int8_t r, int8_t g, int8_t b) const {
@@ -223,7 +267,7 @@ float ArmDevice::servoRead(int8_t id) const {
     std::array<int8_t, 2U> buf = {TRUNC_8(id + 0x30), 0};
 
     checkAndThrow(SIGN_8(writeToBus(this->motorBus_, buf.data(), 2U)), 2, "servoRead");
-    (void)usleep(3000U);
+    (void) usleep(3000U);
 
     int16_t pos = FLOOR_16(readWordFromBus(this->motorBus_, UNSIGN_8(id)));
     pos = SIGN_16(pos >> 8 & 0xff) | SIGN_16(pos << 8 & 0xff00);
@@ -235,11 +279,11 @@ float ArmDevice::servoRead(int8_t id) const {
             break;
         }
         case 2:
-        case 3:{
+        case 3: {
             val = 180.0F * (UPCAST_FLT(pos) - 900.0F) / 2200.0F - 90.0F;
             break;
         }
-        case 4:{
+        case 4: {
             val = 180.0F * (UPCAST_FLT(pos) - 900.0F) / 2200.0F - 180.0F + 4.0F;
             break;
         }

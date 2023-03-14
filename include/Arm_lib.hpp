@@ -17,6 +17,16 @@ extern "C"
 {
 #include "linux/i2c-dev.h"
 #include <i2c/smbus.h>
+
+#include <stdio.h>
+#include <string.h>
+
+// Linux headers
+#include <fcntl.h> // Contains file controls like O_RDWR
+#include <errno.h> // Error integer and strerror() function
+#include <termios.h> // Contains POSIX terminal control definitions
+#include <unistd.h> // write(), read(), close()
+
 }
 
 #define RAD 0.0174533
@@ -63,6 +73,7 @@ private:
     const int hatAddress_ = 0x0d;
     int motorBus_ = -1;                                             // I2C motorBus
     int ledBus_ = -1;
+    struct termios tty;
 
 
     /*void setRGBColor(int8_t color);
