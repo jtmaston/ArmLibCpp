@@ -11,85 +11,49 @@
 #define SIGN_16(x) (static_cast<int16_t>(x))
 #define UPCAST_FLT(x) (static_cast<float>(x))
 
-#include <filesystem>
-
 namespace fs = std::filesystem;
 
 #ifndef __x86_64
+#include <serial/serial.h>
+
 
 ArmDevice::ArmDevice() {
 
-    std::vector<std::string> port_names;
-    fs::path p("/dev/serial/by-id");
-    if (!exists(p)) {
-        throw std::runtime_error("No serial port!");
-    } else {
-        for (auto de: fs::directory_iterator(p)) {
-            if (is_symlink(de.symlink_status())) {
-                fs::path symlink_points_at = read_symlink(de);
-                fs::path canonical_path = fs::canonical(p / symlink_points_at);
+    //std::vector<serial::PortInfo> devices_found = serial::list_ports();
+    /*for(auto&i : devices_found)
+    {
+        std::cout << i.port << "\n";
+    }*/
 
-                motorBus_ = open(canonical_path.generic_string().c_str(), O_RDWR);
-            }
-        }
-    }
+    motorBus_.setPort("/dev/ttyUSB0");
+    motorBus_.setBaudrate(9600);
+    motorBus_.setBytesize(serial::eightbits);
+    motorBus_.setParity(serial::parity_even);
+    motorBus_.setFlowcontrol(serial::flowcontrol_hardware);
+    motorBus_.setStopbits(serial::stopbits_two);
+    motorBus_.open();
 
-    if (tcgetattr(motorBus_, &tty) != 0) {
-        printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
-    }
 
-    tty.c_cflag |= PARENB;  // Set parity bit, enabling parity
-    //tty.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
-    tty.c_cflag |= CSTOPB;  // Set stop field, two stop bits used in communication
-    tty.c_cflag &= ~CSIZE; // Clear all the size bits, then use one of the statements below
-    tty.c_cflag |= CS8; // 8 bits per byte (most common)
-    tty.c_cflag |= CRTSCTS;  // Enable RTS/CTS hardware flow control
-    tty.c_cflag |= CREAD | CLOCAL;
-    tty.c_lflag &= ~ICANON;
-    tty.c_lflag &= ~ECHO; // Disable echo
-    tty.c_lflag &= ~ECHOE; // Disable erasure
-    tty.c_lflag &= ~ECHONL; // Disable new-line echo
-    tty.c_lflag &= ~ISIG; // Disable interpretation of INTR, QUIT and SUSP
-    tty.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
-    tty.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR |
-                     ICRNL); // Disable any special handling of received bytes
-    tty.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
-    tty.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
-    tty.c_cc[VTIME] = 10;    // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
-    tty.c_cc[VMIN] = 0;
 
-    cfsetispeed(&tty, B9600);
-    cfsetospeed(&tty, B9600);
-
-    if (tcsetattr(motorBus_, TCSANOW, &tty) != 0) {
-        printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
-    }
-
-    /*uint8_t buf[] = "VR\r\n";
-    write(motorBus_, buf, sizeof(buf));
-
-    char read_buf[256];
-    int n = read(motorBus_, &read_buf, sizeof(read_buf));
-    if(strncmp(read_buf, "RV-E", 4) != 0)
-        std::cout << "Unsupported robot model!";*/
-
-    usleep(1e3);
-    uint8_t goHome[] = "MP 574.84,0.00,565.45,-180.00,69.99,-180.00,R,A,N\r\n";
-    write(motorBus_, goHome, sizeof(goHome));
-
+    motorBus_.write("VR\r\n");
+    motorBus_.waitReadable();
+    std::string resp = motorBus_.read(100);
+    std::cout << resp;
+    motorBus_.write("MP 435.00,0.00,730.00,0.00,90.00,0.00,R,A,N\r\n");
+    motorBus_.flush();
 }
 
-inline size_t writeToBus(int fd, const void *buf, size_t n) {
+inline size_t writeToBus(const serial::Serial& fd, const void *buf, size_t n) {
     return 0;
     //return write(fd, buf, n);
 }
 
-inline int readWordFromBus(int fd, uint8_t command) {
+inline int readWordFromBus(const serial::Serial& fd, uint8_t command) {
     return 0;
     //return i2c_smbus_read_word_data(fd, command);
 }
 
-inline int readByteFromBus(int fd, uint8_t command) {
+inline int readByteFromBus(const serial::Serial& fd, uint8_t command) {
     return 0;
     //return i2c_smbus_read_byte_data(fd, command);
 }
@@ -264,36 +228,7 @@ float ArmDevice::servoRead(int8_t id) const {
         throw std::runtime_error("Servo ID specified was out of range (1, 6) for ServoRead");
     }
 
-    std::array<int8_t, 2U> buf = {TRUNC_8(id + 0x30), 0};
-
-    checkAndThrow(SIGN_8(writeToBus(this->motorBus_, buf.data(), 2U)), 2, "servoRead");
-    (void) usleep(3000U);
-
-    int16_t pos = FLOOR_16(readWordFromBus(this->motorBus_, UNSIGN_8(id)));
-    pos = SIGN_16(pos >> 8 & 0xff) | SIGN_16(pos << 8 & 0xff00);
-
-    float val = NAN;
-    switch (id) {
-        case 5: {
-            val = 270.0F * (UPCAST_FLT(pos) - 380.0F) / 3320.0F - 90.0F;
-            break;
-        }
-        case 2:
-        case 3: {
-            val = 180.0F * (UPCAST_FLT(pos) - 900.0F) / 2200.0F - 90.0F;
-            break;
-        }
-        case 4: {
-            val = 180.0F * (UPCAST_FLT(pos) - 900.0F) / 2200.0F - 180.0F + 4.0F;
-            break;
-        }
-        default: {
-            val = 180.0F * (UPCAST_FLT(pos) - 900.0F) / 2200.0F - 90.0F;
-            break;
-        }
-
-    }
-    return val;
+    return 0;
 }
 
 std::array<float, 6U> ArmDevice::servoReadall() const        // note: this was migrated from returning
@@ -347,3 +282,20 @@ void ArmDevice::closeRGB() {
 
 void ArmDevice::setRGB(uint led, int8_t r, int8_t g, int8_t b) {
 }*/
+
+
+//if (tcsetattr(motorBus_, TCSANOW, &tty) != 0) {
+//    printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
+//}
+
+/*uint8_t buf[] = "VR\r\n";
+write(motorBus_, buf, sizeof(buf));
+
+char read_buf[256];
+int n = read(motorBus_, &read_buf, sizeof(read_buf));
+if(strncmp(read_buf, "RV-E", 4) != 0)
+    std::cout << "Unsupported robot model!";*/
+
+/*usleep(1e3);
+uint8_t goHome[] = "MP 574.84,0.00,565.45,-180.00,69.99,-180.00,R,A,N\r\n";
+write(motorBus_, goHome, sizeof(goHome));*/

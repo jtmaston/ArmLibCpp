@@ -26,6 +26,7 @@ extern "C"
 #include <errno.h> // Error integer and strerror() function
 #include <termios.h> // Contains POSIX terminal control definitions
 #include <unistd.h> // write(), read(), close()
+#include <serial/serial.h>
 
 }
 
@@ -71,15 +72,8 @@ private:
     std::array<int8_t, 14U> target_{};
     const int coprocessorAddress_ = 0x15;
     const int hatAddress_ = 0x0d;
-    int motorBus_ = -1;                                             // I2C motorBus
+    serial::Serial motorBus_;                                             // I2C motorBus
     int ledBus_ = -1;
-    struct termios tty;
 
-
-    /*void setRGBColor(int8_t color);
-    void setRGBSpeed(int8_t speed);
-    void setRGBEffect(int8_t effect);
-    void closeRGB();
-    void setRGB(int led, int8_t r, int8_t g, int8_t b);*/
 };
 
