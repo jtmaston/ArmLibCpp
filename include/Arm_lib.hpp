@@ -68,12 +68,15 @@ class ArmDevice
                             // used in cleaning the motorBus, a buffer of the old destination command
     void busCleaner(std::array<int8_t, 14U> dest,
                     int16_t time);         // write onto the motorBus, only if the coordinates haven't already been sent
-private:
+    void send(std::string command);
+
+    private:
     std::array<int8_t, 14U> target_{};
     const int coprocessorAddress_ = 0x15;
     const int hatAddress_ = 0x0d;
     serial::Serial motorBus_;                                             // I2C motorBus
     int ledBus_ = -1;
+
 
 };
 

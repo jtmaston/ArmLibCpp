@@ -13,9 +13,18 @@
 
 namespace fs = std::filesystem;
 
-#ifndef __x86_64
+#ifndef FUCKYOUFUCKYOU
 #include <serial/serial.h>
 
+void ArmDevice::send(std::string command) {
+    motorBus_.write(command + "\r\n");
+    motorBus_.flush();
+    motorBus_.write("ER\r\n");
+    motorBus_.flush();
+    motorBus_.waitReadable();
+    std::cout << motorBus_.read(100);
+
+}
 
 ArmDevice::ArmDevice() {
 
@@ -29,18 +38,18 @@ ArmDevice::ArmDevice() {
     motorBus_.setBaudrate(9600);
     motorBus_.setBytesize(serial::eightbits);
     motorBus_.setParity(serial::parity_even);
-    motorBus_.setFlowcontrol(serial::flowcontrol_hardware);
+    motorBus_.setFlowcontrol(serial::flowcontrol_software);
     motorBus_.setStopbits(serial::stopbits_two);
+
+    auto a = serial::Timeout::simpleTimeout(1000);
+
+    motorBus_.setTimeout(a);
+
     motorBus_.open();
 
-
-
-    motorBus_.write("VR\r\n");
-    motorBus_.waitReadable();
-    std::string resp = motorBus_.read(100);
-    std::cout << resp;
-    motorBus_.write("MP 435.00,0.00,730.00,0.00,90.00,0.00,R,A,N\r\n");
-    motorBus_.flush();
+    send("SP 2");
+    send("VR");
+    send("MP 435.00,0.00,730.00,0.00,90.00,0.00,R,A,N");
 }
 
 inline size_t writeToBus(const serial::Serial& fd, const void *buf, size_t n) {
@@ -61,16 +70,16 @@ inline int readByteFromBus(const serial::Serial& fd, uint8_t command) {
 #else
 #warning Detected to be running under x86, i2c bus calls will be disabled!
 ArmDevice::ArmDevice() = default;
-inline size_t writeToBus(int fd, const void* buf, size_t n)
+inline size_t writeToBus(const serial::Serial& fd, const void* buf, size_t n)
 {
     return n;
 }
 
-inline int readWordFromBus(int fd, uint8_t command)
+inline int readWordFromBus(const serial::Serial& fd, uint8_t command)
 {
     return 0;
 }
-inline int readByteFromBus(int fd, uint8_t command)
+inline int readByteFromBus(const serial::Serial& fd, uint8_t command)
 {
     return 0;
 }
@@ -150,8 +159,25 @@ inline void checkAndThrow(int8_t expression, int8_t value, const std::string &ha
     }
 }
 
+bool sent = false;
 void ArmDevice::servoWrite6(std::vector<float> angles, const int16_t time) {
-    std::array<int8_t, 14U> byte_array = {0};
+
+    char command[100] = "";
+
+    for(auto& i: angles)
+    {
+        if(i < 1e-3 && i > -1e-3)
+            i = 0;
+    }
+
+    sprintf(command, "MP %.2f,%.2f,%.2f,%.2f,%.2f,%.2f,R,A,N",
+            angles[0],angles[1],angles[2],angles[3],angles[4],angles[5]);
+
+
+    send(command);
+
+
+    /*std::array<int8_t, 14U> byte_array = {0};
     byte_array.at(0U) = 0x1D;
 
     // note: angle validity should not be checked here
@@ -181,9 +207,9 @@ void ArmDevice::servoWrite6(std::vector<float> angles, const int16_t time) {
         int16_t p_adj = FLOOR_16(pos);
         byte_array.at(UNSIGN_8(i - 1)) = TRUNC_8((p_adj >> 8) & 0xFF);
         byte_array.at(UNSIGN_8(i)) = TRUNC_8(p_adj & 0xFF);
-    }
+    }*/
 
-    busCleaner(byte_array, time);
+    //busCleaner(byte_array, time);
 }
 
 void ArmDevice::toggleTorque(bool torque) const {
